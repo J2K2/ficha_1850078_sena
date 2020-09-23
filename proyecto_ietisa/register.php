@@ -42,31 +42,38 @@ if (
   } else if (strlen($password) < 8) {
     $msg.="La contraseña debe tener mínimo 8 caracteres <br>";
   } else {
-     
-    $mysqli = mysqli_connect("localhost", "root", "", "clase_ietisa");
 
-    if ($mysqli == false) {
-      echo 'Error al conectar con la BD';
-      die(); // Matar procesos PHP
-    }
+    try {
+      $connection_bd = new PDO('mysql:host=localhost; dbname=clase_ietisa', 'root', '');
+      $connection_bd -> setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      $connection_bd -> exec('SET CHARACTER SET utf8');
 
-    $query_users = "SELECT * FROM `usuarios` WHERE `usuarios_email`='".$email."' ";
+      $sql_users = "SELECT * FROM usuarios WHERE usuarios_email=?";
+      $result_query = $connection_bd->prepare($sql_users);
 
-    $resultado = $mysqli->query($query_users);
-    $usuarios = $resultado->fetch_all(MYSQLI_ASSOC);
+      $result_query -> execute(array($email));
 
-    $cantidad_usuarios = count($usuarios);
+      $result_query = $result_query->fetchAll(PDO:: FETCH_ASSOC);
 
-    if ($cantidad_usuarios == 0) {
-      $password = sha1($password);
+      $cantidad_usuarios = count($result_query);
 
-      $insert_usuario = "INSERT INTO `usuarios`(`usuarios_nombres`, `usuarios_email`, `usuarios_password`) VALUES ('".$nombres."', '".$email."', '".$password."')";
+      if ($cantidad_usuarios == 0) {
+        $password = sha1($password);
+  
+        $insert_usuario = "INSERT INTO usuarios(usuarios_nombres, usuarios_email, usuarios_password) VALUES (?, ?, ?)";
+        
+        $result_insert = $connection_bd->prepare($insert_usuario);
+        $result_insert->execute(array($nombres, $email, $password));
+
+        $msg.="Usuario registrado correctamente! <br>";
       
-      $mysqli->query($insert_usuario);
-      $msg.="Usuario registrado correctamente! <br>";
-    
-    } else {
-      $msg.="El email ya se encuentra registrado! <br>";
+      } else {
+        $msg.="El email ya se encuentra registrado! <br>";
+      }
+
+    } catch (Exception $e) {
+      die('Error: '.$e->GetMessage());
+
     }
   }
 }

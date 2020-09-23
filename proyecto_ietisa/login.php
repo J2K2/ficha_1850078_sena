@@ -2,6 +2,9 @@
 session_start();
 
 $_SESSION['autorizado'] = false;
+$_SESSION['usuario_nombre'] = '';
+$_SESSION['usuario_id'] = '';
+$_SESSION['usuario_avatar'] = '';
 
 $msg = "";
 
@@ -21,27 +24,41 @@ if (isset($_POST['email']) && isset($_POST['password'])) {
   $email = strip_tags($_POST['email']);
   $password = strip_tags($_POST['password']);
 
-  $mysqli = mysqli_connect("localhost", "root", "", "clase_ietisa");
+  try {
+    $connection_bd = new PDO('mysql:host=localhost; dbname=clase_ietisa', 'root', '');
+    $connection_bd -> setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $connection_bd -> exec('SET CHARACTER SET utf8');
 
-  if ($mysqli == false) {
-    echo 'Error al conectar con la BD';
-    die(); // Matar procesos PHP
-  }
+    $password = sha1($password);
 
-  $password = sha1($password);
+    $sql_users = "SELECT * FROM usuarios WHERE usuarios_email=? AND usuarios_password=?";
+    $result_query = $connection_bd->prepare($sql_users);
 
-  $query_users = "SELECT * FROM `usuarios` WHERE `usuarios_email`='".$email."' AND `usuarios_password`='".$password."' ";
+    $result_query -> execute(array($email, $password));
 
-  $resultado = $mysqli->query($query_users);
-  $usuarios = $resultado->fetch_all(MYSQLI_ASSOC);
+    $result_query = $result_query->fetchAll(PDO:: FETCH_ASSOC);
 
-  $cantidad_usuarios = count($usuarios);
+    $cantidad_usuarios = count($result_query);
 
-  if ($cantidad_usuarios == 1) {
-    $_SESSION['autorizado'] = true;
-    echo '<meta http-equiv="refresh" content="0, starter.php">';
-  } else {
-    $msg.="Usuario no registrado!";
+    if ($cantidad_usuarios == 1) {
+
+      $usuario_id = $result_query[0]['usuarios_id'];
+      $usuario_nombre = $result_query[0]['usuarios_nombres'];
+      $usuario_avatar = $result_query[0]['usuarios_avatar'];
+
+      $_SESSION['autorizado'] = true;
+      $_SESSION['usuario_nombre'] = $usuario_nombre;
+      $_SESSION['usuario_id'] = $usuario_id;
+      $_SESSION['usuario_avatar'] = $usuario_avatar;
+
+      echo '<meta http-equiv="refresh" content="0, starter.php">';
+    } else {
+      $msg.="Usuario no registrado!";
+    }
+
+  } catch (Exception $e) {
+    die('Error: '.$e->GetMessage());
+
   }
     
 }
